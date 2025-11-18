@@ -1,0 +1,220 @@
+{%extends "base.html"%}
+
+{%block about_active%}active_tab{%endblock%}
+
+{%block body%}
+
+<article>
+    <h1>Description</h1>
+
+    <p>
+        The data contains records
+        in the date range 01/09/2025
+        to 30/09/2025, scraped from the
+        website - <a href="https://www3.shoalhaven.nsw.gov.au/masterviewUI/modules/ApplicationMaster/default.aspx">
+            https://www3.shoalhaven.nsw.gov.au/masterviewUI/modules/ApplicationMaster/default.aspx
+        </a>.
+    </p>
+
+    <h1>Purpose</h1>
+    The data is scraped
+    for submission as directed
+    in a hackathon organized by
+    <a href="https://www.reluconsultancy.com">Relu Consultancy</a>
+    on 15 November 2025 via Unstop.
+
+    <h1>Code Author</h1>
+    <p>Name: Abhijeet Verma, Email: <a href="mailto:parrotabhijeet@gmail.com">parrotabhijeet@gmail.com</a></p>
+
+    <h1>Code</h1>
+
+    <p>
+        The code is written using <code>python</code>.
+        <code>playwright</code> library has been used
+        for browser automation and scraping.
+        The code is tested to work on
+        <code>python</code> version <code>3.14.0</code>
+        on Fedora Linux 43. Here is the complete code
+        used to scrap the data
+        (available for free use under terms of MIT Licence) -
+    </p>
+
+    <div class="pygments-highlight">
+    <pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">playwright.sync_api</span><span class="w"> </span><span class="kn">import</span> <span class="n">sync_playwright</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span><span class="o">,</span><span class="w"> </span><span class="nn">csv</span>
+
+<span class="n">root_url</span> <span class="o">=</span> <span class="s2">"https://www3.shoalhaven.nsw.gov.au/masterviewUI/modules/ApplicationMaster/default.aspx"</span>
+<span class="n">data_export_file</span> <span class="o">=</span> <span class="s2">"./scrapped_data.csv"</span>
+<span class="n">record_page_links</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">record_page_link_prefix</span> <span class="o">=</span> <span class="s2">"https://www3.shoalhaven.nsw.gov.au/masterviewUI/modules/ApplicationMaster/"</span>
+<span class="n">final_data</span> <span class="o">=</span> <span class="p">[[</span>
+    <span class="s2">"DA_Number"</span><span class="p">,</span> <span class="s2">"Details URL"</span><span class="p">,</span> <span class="s2">"Description"</span><span class="p">,</span>
+    <span class="s2">"Submission Date"</span><span class="p">,</span> <span class="s2">"Decision"</span><span class="p">,</span> <span class="s2">"Categories"</span><span class="p">,</span>
+    <span class="s2">"Property Address"</span><span class="p">,</span> <span class="s2">"Applicant"</span><span class="p">,</span> <span class="s2">"Progress"</span><span class="p">,</span>
+    <span class="s2">"Fees"</span><span class="p">,</span> <span class="s2">"Documents"</span><span class="p">,</span> <span class="s2">"Contact Council"</span><span class="p">]]</span>
+<span class="n">non_empty_fee_rows</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="k">with</span> <span class="n">sync_playwright</span><span class="p">()</span> <span class="k">as</span> <span class="n">p</span><span class="p">:</span>
+    <span class="n">browser</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">chromium</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">headless</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">page</span> <span class="o">=</span> <span class="n">browser</span><span class="o">.</span><span class="n">new_page</span><span class="p">()</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"Starting Scraping ..."</span><span class="p">)</span>
+        <span class="n">page</span><span class="o">.</span><span class="n">goto</span><span class="p">(</span><span class="n">root_url</span><span class="p">)</span>
+
+        <span class="c1"># clicking agree button</span>
+        <span class="n">agree_button_selector</span> <span class="o">=</span> <span class="s2">"input[value='Agree']"</span>
+
+        <span class="k">with</span> <span class="n">page</span><span class="o">.</span><span class="n">expect_navigation</span><span class="p">():</span>
+            <span class="n">page</span><span class="o">.</span><span class="n">click</span><span class="p">(</span><span class="n">agree_button_selector</span><span class="p">)</span>
+
+        <span class="c1"># going to DA tracking</span>
+
+        <span class="n">DA_tracking_link</span> <span class="o">=</span> <span class="s2">"a[href='Default.aspx']"</span>
+
+        <span class="k">with</span> <span class="n">page</span><span class="o">.</span><span class="n">expect_navigation</span><span class="p">():</span>
+            <span class="n">page</span><span class="o">.</span><span class="n">click</span><span class="p">(</span><span class="n">DA_tracking_link</span><span class="p">)</span>
+
+        <span class="c1"># filling and submitting search information</span>
+
+        <span class="n">advance_search_tab</span> <span class="o">=</span> <span class="s2">"li.rtsLI:nth-child(2)"</span>
+        <span class="n">start_date_input</span> <span class="o">=</span> <span class="s2">"#ctl00_cphContent_ctl00_ctl03_dateInput_text"</span>
+        <span class="n">end_date_input</span> <span class="o">=</span> <span class="s2">"#ctl00_cphContent_ctl00_ctl05_dateInput_text"</span>
+        <span class="n">search_button</span> <span class="o">=</span> <span class="s2">"#ctl00_cphContent_ctl00_btnSearch"</span>
+
+        <span class="n">page</span><span class="o">.</span><span class="n">click</span><span class="p">(</span><span class="n">advance_search_tab</span><span class="p">)</span>
+        <span class="n">page</span><span class="o">.</span><span class="n">type</span><span class="p">(</span><span class="n">start_date_input</span><span class="p">,</span> <span class="s2">"01/09/2025"</span><span class="p">)</span>
+        <span class="n">page</span><span class="o">.</span><span class="n">type</span><span class="p">(</span><span class="n">end_date_input</span><span class="p">,</span> <span class="s2">"30/09/2025"</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">page</span><span class="o">.</span><span class="n">expect_navigation</span><span class="p">():</span>
+            <span class="n">page</span><span class="o">.</span><span class="n">click</span><span class="p">(</span><span class="n">search_button</span><span class="p">)</span>
+
+        <span class="c1"># collecting submit buttons' links (record_page_links)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">'Scraping pages ...'</span><span class="p">)</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="k">while</span><span class="p">(</span><span class="kc">True</span><span class="p">):</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="s1">'Scraping page </span><span class="si">{}</span><span class="s1"> ..'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">count</span><span class="p">))</span>
+
+            <span class="n">record_links_selector</span> <span class="o">=</span> <span class="s2">"#ctl00_cphContent_ctl01_ctl00_RadGrid1_ctl00 &gt; tbody &gt; tr &gt; td &gt; a"</span>
+
+            <span class="k">for</span> <span class="n">locator</span> <span class="ow">in</span> <span class="n">page</span><span class="o">.</span><span class="n">locator</span><span class="p">(</span><span class="n">record_links_selector</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+                <span class="n">href</span> <span class="o">=</span> <span class="n">locator</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">'href'</span><span class="p">)</span>
+                <span class="n">record_page_links</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">href</span><span class="p">)</span>
+
+            <span class="n">next_page_button_selector</span> <span class="o">=</span> <span class="s2">".rgPageNext"</span>
+            <span class="n">next_page_button</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">locator</span><span class="p">(</span><span class="n">next_page_button_selector</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="c1">#if(count == 2): break # Use while developing, to reduce records</span>
+
+            <span class="k">if</span><span class="p">(</span><span class="n">next_page_button</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">'onclick'</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">'return'</span><span class="p">)):</span> <span class="k">break</span>
+
+            <span class="n">page</span><span class="o">.</span><span class="n">click</span><span class="p">(</span><span class="n">next_page_button_selector</span><span class="p">)</span>
+            <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># scrapping each record from its page</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"Scraping Records ..."</span><span class="p">)</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">record_page_links</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">page_link</span> <span class="ow">in</span> <span class="n">record_page_links</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">"Scraping record </span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2"> .."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="n">total</span><span class="p">))</span>
+            <span class="n">page</span><span class="o">.</span><span class="n">goto</span><span class="p">(</span><span class="s1">'</span><span class="si">{}{}</span><span class="s1">'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">record_page_link_prefix</span><span class="p">,</span><span class="n">page_link</span><span class="p">))</span>
+            <span class="n">record</span> <span class="o">=</span> <span class="p">[]</span>
+
+            <span class="c1"># DA_Number</span>
+            <span class="n">record</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">locator</span><span class="p">(</span><span class="s2">"#ctl00_cphContent_ctl00_lblApplicationHeader"</span><span class="p">)</span><span class="o">.</span><span class="n">text_content</span><span class="p">())</span>
+
+            <span class="c1"># Detail URL</span>
+            <span class="n">record</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">'</span><span class="si">{}{}</span><span class="s1">'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">record_page_link_prefix</span><span class="p">,</span><span class="n">page_link</span><span class="p">))</span>
+
+            <span class="c1"># Description and Submission Date</span>
+
+            <span class="n">c</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">locator</span><span class="p">(</span><span class="s2">"#lblDetails"</span><span class="p">)</span><span class="o">.</span><span class="n">text_content</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="n">pattern</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">"Description:(.*?)Submitted:([\d/]*)"</span>
+            <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+
+            <span class="n">date</span><span class="p">,</span> <span class="n">description</span> <span class="o">=</span> <span class="s1">''</span><span class="p">,</span> <span class="s1">''</span>
+            <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+                <span class="n">description</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="n">date</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+                <span class="n">record</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">description</span><span class="p">)</span>
+                <span class="n">record</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">record</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+
+            <span class="c1"># Decision</span>
+            <span class="n">record</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">locator</span><span class="p">(</span><span class="s2">"#lblDecision"</span><span class="p">)</span><span class="o">.</span><span class="n">text_content</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+            <span class="c1"># Categories</span>
+            <span class="n">record</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">locator</span><span class="p">(</span><span class="s2">"#lblCat"</span><span class="p">)</span><span class="o">.</span><span class="n">text_content</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+            <span class="c1"># Property_Address</span>
+            <span class="n">record</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">locator</span><span class="p">(</span><span class="s2">"#lblProp"</span><span class="p">)</span><span class="o">.</span><span class="n">text_content</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+            <span class="c1"># Applicant</span>
+            <span class="n">record</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">locator</span><span class="p">(</span><span class="s2">"#lblPeople"</span><span class="p">)</span><span class="o">.</span><span class="n">text_content</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+            <span class="c1"># Progress</span>
+            <span class="n">locator</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">locator</span><span class="p">(</span><span class="s2">"tr.shTableAlt:nth-child(2) &gt; td:nth-child(2)"</span><span class="p">)</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">locator</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="n">record</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"No progress."</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># in progress, appending progress message</span>
+                <span class="n">record</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">locator</span><span class="o">.</span><span class="n">text_content</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+            <span class="c1"># Fees</span>
+            <span class="n">scrapped_string</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">locator</span><span class="p">(</span><span class="s2">"#lblFees"</span><span class="p">)</span><span class="o">.</span><span class="n">text_content</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">scrapped_string</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">'No fees'</span><span class="p">)):</span>
+                <span class="n">record</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"Not Required"</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">record</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span>
+                        <span class="sa">r</span><span class="s2">"\$([\d,]+(?:\.\d{1,2})?)"</span><span class="p">,</span>
+                        <span class="n">page</span><span class="o">.</span><span class="n">locator</span><span class="p">(</span><span class="s2">"#lblFees &gt; table &gt; tbody &gt; tr:nth-last-child(1) &gt; td"</span><span class="p">)</span><span class="o">.</span><span class="n">text_content</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                        <span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                    <span class="p">)</span>
+                <span class="n">non_empty_fee_rows</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="c1"># Documents</span>
+            <span class="c1"># in case there are multiple documents</span>
+            <span class="n">documents</span> <span class="o">=</span> <span class="s1">''</span>
+            <span class="k">for</span> <span class="n">document</span> <span class="ow">in</span> <span class="n">page</span><span class="o">.</span><span class="n">locator</span><span class="p">(</span><span class="s2">"#lblDocs &gt; b"</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+                <span class="n">documents</span> <span class="o">=</span> <span class="n">documents</span> <span class="o">+</span> <span class="n">document</span><span class="o">.</span><span class="n">text_content</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">+</span> <span class="s1">'; '</span>
+            <span class="n">record</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span>
+
+
+            <span class="c1"># Contact_Council</span>
+            <span class="n">scrapped_string</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">locator</span><span class="p">(</span><span class="s2">"#lbl91"</span><span class="p">)</span><span class="o">.</span><span class="n">text_content</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">scrapped_string</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"Application Is Not on exhibition"</span><span class="p">)):</span>
+                <span class="n">record</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"Not required"</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">record</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">scrapped_string</span><span class="p">)</span>
+
+            <span class="n">final_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
+
+            <span class="c1">#if count == 20: break   # use while developing to reduce records</span>
+            <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"!!! An exception occured. !!! </span><span class="se">\n</span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">browser</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"Browser closed."</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"Scrapping Done."</span><span class="p">)</span>
+
+<span class="c1"># writing collected data to csv file</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Writing data to csv file ..."</span><span class="p">)</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">data_export_file</span><span class="p">,</span> <span class="s1">'w'</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">writer</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="n">writer</span><span class="o">.</span><span class="n">writerows</span><span class="p">(</span><span class="n">final_data</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Rows with fees/Total rows = </span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">."</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">non_empty_fee_rows</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">final_data</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Exit."</span><span class="p">)</span>
+</pre></div>
+</article>
+
+{%endblock%}

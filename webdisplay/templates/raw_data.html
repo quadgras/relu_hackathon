@@ -1,0 +1,48 @@
+{%extends "base.html"%}
+
+{%block raw_data_active%}active_tab{%endblock%}
+
+{%block body%}
+
+<p>Here is the raw data presented into tabular form -</p>
+
+<div id="table_container">
+<table>
+    <thead>
+        <th></th>
+        <th>DA_Number</th>
+        <th>Details URL</th>
+        <th>Description</th>
+        <th>Submission Date</th>
+        <th>Decision</th>
+        <th>Categories</th>
+        <th>Property Address</th>
+        <th>Applicant</th>
+        <th>Progress</th>
+        <th>Fees</th>
+        <th>Documents</th>
+        <th>Contact Council</th>
+    </thead>
+    <tbody>
+        {%for row in data%}
+        <tr>
+            <td>{{row[0]}}</td>
+            <td>{{row[1]}}</td>
+            <td>{{row[2]}}</td>
+            <td>{{row[3]}}</td>
+            <td>{{row[4]}}</td>
+            <td>{{row[5]}}</td>
+            <td>{{row[6]}}</td>
+            <td>{{row[7]}}</td>
+            <td>{{row[8]}}</td>
+            <td>{{row[9]}}</td>
+            <td>{{row[10]}}</td>
+            <td>{{row[11]}}</td>
+            <td>{{row[12]}}</td>
+        </tr>
+        {%endfor%}
+    </tbody>
+</table>
+</div>
+
+{%endblock%}

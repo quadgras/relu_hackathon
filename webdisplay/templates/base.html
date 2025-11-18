@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Relu Hackathon Project</title>
+    <link rel="stylesheet" type="text/css" href="{{url_for('static', filename='base.css')}}">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <script type="text/javascript">
+        /* After multiple attempts, unable to disable nav bar links
+         * simply because we can't disable an anchor tag.
+         * The second option was to set their href to ''
+         * and remove the click event from them.
+         * But, there is no simple method to derigester click event.
+         * So, left the try for now.
+         * 
+         * Although, functionality works perfectly fine because
+         * when multiple click events happen,
+         * multiple links are scheduled in line to be opened.
+         * But after the first link is opened,
+         * it results in new page, effectively removing
+         * everything from the last page including those links
+         * scheduled to be opened after the first.
+         *
+         * I hope this would be easier in case of buttons
+         * since buttons can be disabled.
+         * 
+         * For case here, the functionality works as explained above.
+         * But, if you want more robustness, the simmplest strategy so far 
+         * is you can simply put the loading screen on the very top
+         * such that nothing is visible at all.
+        */
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const links = document.querySelectorAll('a');
+            const loading_div = document.querySelector('.loading_div');
+
+            links.forEach(link => {
+                link.addEventListener('click', (event) => {
+
+                    event.preventDefault();
+                    let destination_link = link.href;
+
+                    loading_div.classList.remove('hide_loading');
+
+                    window.location.href = destination_link;
+                }
+                );
+            });
+
+            // for hiding loading screen when user navigates with back button
+            window.addEventListener('pageshow', (event) => {
+                document.querySelector('.loading_div').classList.add('hide_loading');
+            });
+        });
+    </script>
+
+</head>
+
+<body>
+    <header>
+        <h1>SHOALHAVEN SCRAPPED DATA</h1>
+        <nav>
+            <a href="{{url_for('stats')}}" class="{%block stats_active%}{%endblock%}">Stats</a>
+            <a href="{{url_for('about')}}" class="{%block about_active%}{%endblock%}">About</a>
+            <a href="{{url_for('raw_data')}}" class="{%block raw_data_active%}{%endblock%}">Data</a>
+        </nav>
+    </header>
+    <div id="content_div">
+        {%block body%}{%endblock%}
+    </div>
+    <footer>
+        Copyright 2025, Abhijeet Verma.
+        Data belongs to <a
+            href="https://www3.shoalhaven.nsw.gov.au/masterviewUI/modules/ApplicationMaster/default.aspx">Shoalhaven
+            Website</a>.
+    </footer>
+    <div class="loading_div hide_loading">
+        Loading ...
+    </div>
+</body>
+
+</html>
